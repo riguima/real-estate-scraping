@@ -1,10 +1,19 @@
 import geonamescache
 import json
-from datetime import datetime
+from selenium import webdriver
+from selenium.webdriver.firefox.options import Options
+from selenium.webdriver.firefox.service import Service
+from webdriver_manager.firefox import GeckoDriverManager
 import pandas as pd
 
 from real_estate_scraping.domain import RealEstate
 from real_estate_scraping import exceptions
+
+
+def create_driver() -> webdriver.Firefox:
+    options = Options()
+    options.add_argument('-headless')
+    return webdriver.Firefox(options=options, service=Service(GeckoDriverManager().install()))
 
 
 def get_cities() -> list[str]:
@@ -17,9 +26,9 @@ def get_cities() -> list[str]:
     return sorted(result)
 
 
-def generate_spreadsheet(real_estates: list[RealEstate], path: str) -> None:
+def to_excel(real_estates: list[RealEstate], path: str) -> None:
     if path.split('.')[-1] != 'xlsx':
-        raise exceptions.GenerateSpreadSheetError('É possivel gerar planilhas apenas com extensão xlsx')
+        raise exceptions.ToExcelError('É possivel gerar planilhas apenas com extensão xlsx')
     data = {'Tipo de negociação': [], 'Tipo do imóvel': [],
             'Cidade': [], 'Contato do anunciante': [], 'Nome do anunciante': [],
             'Preço': [], 'Endereço': [], 'Área': [], 'Quartos': [],
@@ -35,6 +44,7 @@ def add_real_estate(real_estate: RealEstate, data: dict) -> None:
     data['Tipo do imóvel'].append(real_estate.type)
     data['Cidade'].append(real_estate.city)
     data['Contato do anunciante'].append(real_estate.phone_number)
+    data['Nome do anunciante'].append(real_estate.advertiser_name)
     data['Preço'].append(real_estate.price)
     data['Endereço'].append(real_estate.address)
     data['Área'].append(real_estate.area)

@@ -11,6 +11,7 @@ def real_estate() -> RealEstate:
         type='Casa',
         city='Itupeva - São Paulo',
         phone_number=11998835264,
+        advertiser_name='Richard',
         price=500000,
         address='Estrada Municipal Waldomiro Fregnhami 551, Nova Monte Serrat',
         area=50,

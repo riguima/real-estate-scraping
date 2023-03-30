@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
+from abc import ABC, abstractmethod
 
 
 @dataclass
@@ -14,5 +15,13 @@ class RealEstate:
     bedrooms: int
     bathrooms: int
     car_spaces: int
-    publication_date: date
     ad_url: str
+    publication_date: date = datetime.now().date()
+    advertiser_name: str = ''
+
+
+class IBrowser(ABC):
+
+    @abstractmethod
+    def create_real_estate_from_page(self, url: str) -> RealEstate:
+        raise NotImplementedError()

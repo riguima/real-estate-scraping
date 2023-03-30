@@ -22,5 +22,5 @@ class InvalidAdURL(Exception):
     pass
 
 
-class GenerateSpreadSheetError(Exception):
+class ToExcelError(Exception):
     pass
