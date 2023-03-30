@@ -1,10 +1,11 @@
 from PySide6 import QtWidgets
 import sys
 
-from helpers import (
+from real_estate_scraping.helpers import (
     create_combobox_layout, create_layout_directory_dialog,
-    Button,
+    Button
 )
+from real_estate_scraping.use_cases import get_cities
 
 
 class Main(QtWidgets.QWidget):
@@ -14,7 +15,7 @@ class Main(QtWidgets.QWidget):
         self.setStyleSheet('font-size: 20px')
         self.setFixedSize(400, 250)
         self.layout_website = create_combobox_layout('Site', ['Zap Imóveis'])
-        self.layout_city = create_combobox_layout('Cidade', ['Itupeva - SP'])
+        self.layout_city = create_combobox_layout('Cidade', get_cities())
         self.layout_negotiation_type = create_combobox_layout('Tipo de negociação', ['Venda', 'Aluguel'])
         self.layout_type = create_combobox_layout('Tipo', ['Casa', 'Apartamento'])
         self.layout_directory_dialog = create_layout_directory_dialog(self)
