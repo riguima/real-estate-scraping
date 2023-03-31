@@ -12,9 +12,8 @@ class Button(QtWidgets.QPushButton):
         self.setStyleSheet('background-color: #187bcd; color: white')
 
 
-def create_combobox_layout(label: str, combobox_items: list[str]) -> QtWidgets.QHBoxLayout:
-    combobox = QtWidgets.QComboBox()
-    combobox.setObjectName('combobox')
+def create_combobox_layout(parent: QtWidgets.QWidget, label: str, combobox_items: list[str]) -> QtWidgets.QHBoxLayout:
+    combobox = QtWidgets.QComboBox(parent)
     combobox.addItems(combobox_items)
     layout = QtWidgets.QHBoxLayout()
     layout.addWidget(QtWidgets.QLabel(label), 1)
@@ -38,12 +37,12 @@ def open_directory_dialog(widget: QtWidgets.QWidget, target_input: QtWidgets.QLi
 
 
 def find_element(driver: Firefox, selector: str):
-    return WebDriverWait(driver, 30).until(
+    return WebDriverWait(driver, 60).until(
         EC.presence_of_element_located((By.CSS_SELECTOR, selector))
     )
 
 
 def find_elements(driver: Firefox, selector: str):
-    return WebDriverWait(driver, 30).until(
+    return WebDriverWait(driver, 60).until(
         EC.presence_of_all_elements_located((By.CSS_SELECTOR, selector))
     )

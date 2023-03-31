@@ -12,7 +12,7 @@ from real_estate_scraping import exceptions
 
 def create_driver() -> webdriver.Firefox:
     options = Options()
-    options.add_argument('-headless')
+    #options.add_argument('-headless')
     return webdriver.Firefox(options=options, service=Service(GeckoDriverManager().install()))
 
 

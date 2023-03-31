@@ -3,6 +3,7 @@ import json
 from datetime import date
 from selenium.webdriver import Firefox
 from selenium.common.exceptions import TimeoutException
+from time import sleep
 
 from real_estate_scraping.domain import IBrowser, RealEstate
 from real_estate_scraping.validators import valid_real_estate, valid_city, valid_negotiation_type
@@ -42,10 +43,14 @@ class ZapImoveisBrowser(IBrowser):
 
     def create_real_estates(self) -> list[RealEstate]:
         result = []
-        for element in find_elements('.simple-card__box'):
+        #search_url = self._driver.current_url
+        for c in range(len(find_elements(self._driver, '.simple-card__box'))):
+            element = find_element(self._driver, f'.simple-card__box:nth-child({c + 1})')
+            #element.click()
             self._driver.execute_script('arguments[0].click();', element)
-            find_element(self._driver, '.info__business-type')
-            result.append(self.create_real_estate_from_page(self._driver.current_url))
+            #find_element(self._driver, '.info__business-type')
+            #result.append(self.create_real_estate_from_page(self._driver.current_url))
+            #self._driver.get(search_url)
         return result
 
     def create_real_estate_from_page(self, url: str) -> RealEstate:
