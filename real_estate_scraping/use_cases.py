@@ -5,6 +5,7 @@ from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.service import Service
 from webdriver_manager.firefox import GeckoDriverManager
 import pandas as pd
+from pathlib import Path
 
 from real_estate_scraping.domain import RealEstate
 from real_estate_scraping import exceptions
@@ -12,8 +13,9 @@ from real_estate_scraping import exceptions
 
 def create_driver() -> webdriver.Firefox:
     options = Options()
-    #options.add_argument('-headless')
-    return webdriver.Firefox(options=options, service=Service(GeckoDriverManager().install()))
+    options.add_argument('-headless')
+    return webdriver.Firefox(options=options,
+                             service=Service(GeckoDriverManager().install()))
 
 
 def get_cities() -> list[str]:
@@ -28,28 +30,25 @@ def get_cities() -> list[str]:
 
 def to_excel(real_estates: list[RealEstate], path: str) -> None:
     if path.split('.')[-1] != 'xlsx':
-        raise exceptions.ToExcelError('É possivel gerar planilhas apenas com extensão xlsx')
-    data = {'Tipo de negociação': [], 'Tipo do imóvel': [],
-            'Cidade': [], 'Contato do anunciante': [], 'Nome do anunciante': [],
-            'Preço': [], 'Endereço': [], 'Área': [], 'Quartos': [],
-            'Banheiros': [], 'Vagas': [], 'Data da publicação': [], 'Link': []}
+        raise exceptions.ToExcelError(
+            'É possivel gerar planilhas apenas com extensão xlsx')
+    if Path(path).exists():
+        df = pd.read_excel(path)
+    else:
+        df = pd.DataFrame(columns=[
+            'Tipo de negociação', 'Tipo do imóvel', 'Cidade',
+            'Contato do anunciante', 'Nome do anunciante', 'Preço', 'Endereço',
+            'Área', 'Quartos', 'Banheiros', 'Vagas', 'Data da publicação',
+            'Link',
+        ])
     for r in real_estates:
-        add_real_estate(r, data)
-    df = pd.DataFrame(data)
+        if r.ad_url not in df['Link']:
+            add_real_estate(r, df)
     df.to_excel(path, index=False)
 
 
-def add_real_estate(real_estate: RealEstate, data: dict) -> None:
-    data['Tipo de negociação'].append(real_estate.negotiation_type)
-    data['Tipo do imóvel'].append(real_estate.type)
-    data['Cidade'].append(real_estate.city)
-    data['Contato do anunciante'].append(real_estate.phone_number)
-    data['Nome do anunciante'].append(real_estate.advertiser_name)
-    data['Preço'].append(real_estate.price)
-    data['Endereço'].append(real_estate.address)
-    data['Área'].append(real_estate.area)
-    data['Quartos'].append(real_estate.bedrooms)
-    data['Banheiros'].append(real_estate.bathrooms)
-    data['Vagas'].append(real_estate.car_spaces)
-    data['Data da publicação'].append(real_estate.publication_date)
-    data['Link'].append(real_estate.ad_url)
+def add_real_estate(rs: RealEstate, df: pd.DataFrame) -> None:
+    df.loc[len(df)] = [rs.negotiation_type, rs.real_estate_type, rs.city,
+                       rs.phone_number, rs.advertiser_name, rs.price,
+                       rs.address, rs.area, rs.bedrooms, rs.bathrooms,
+                       rs.car_spaces, rs.publication_date, rs.ad_url]

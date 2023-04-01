@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 @dataclass
 class RealEstate:
     negotiation_type: str
-    type: str
+    real_estate_type: str
     city: str
     phone_number: int
     price: float
@@ -23,5 +23,5 @@ class RealEstate:
 class IBrowser(ABC):
 
     @abstractmethod
-    def create_real_estate_from_page(self, url: str) -> RealEstate:
+    def create_real_estates(self) -> RealEstate:
         raise NotImplementedError()
