@@ -26,9 +26,9 @@ class ZapImoveisBrowser(IBrowser):
         real_estates = zap.search(
             localization=(f'{search_info.state.lower()}+'
                           f'{slugify(search_info.city)}'),
-            num_pages=search_info.num_pages, acao=search_info.negotiation_type.lower(),
+            num_pages=1, acao=search_info.negotiation_type.lower(),
             tipo=search_info.real_estate_type.lower(),
-        )
+        )[:2]
         for rs in real_estates:
             ad_url = f'https://www.zapimoveis.com.br{rs.link}'
             if ad_url not in dataframe['Link']:
@@ -93,61 +93,44 @@ class ImovelWebBrowser(IBrowser):
                f'{search_info.state}.html')
         self._driver.get(url.lower())
         result = []
-        for p in range(search_info.num_pages):
-            prices = [self._get_price(p) for p in find_elements(
-                self._driver, 'div[data-qa=POSTING_CARD_PRICE]')]
+        for i in range(len(find_elements(self._driver, 'div[data-qa=POSTING_CARD_PRICE]'))):
+            prices = find_elements(self._driver,
+                                   'div[data-qa=POSTING_CARD_PRICE]')
             addresses = find_elements(self._driver, '.sc-ge2uzh-0')
+            phone_numbers = find_elements(self._driver,
+                                          'button[data-qa=CARD_WHATSAPP')
+            features = find_elements(
+                self._driver,
+                'div[data-qa=POSTING_CARD_FEATURES] span span',
+            )
+            feature = features[i * 5:i * 5 + 5]
+            advertiser_names_buttons = find_elements(
+                self._driver, 'button[data-qa=CARD_CONTACT_MODAL]')
             neighborhoods = find_elements(self._driver,
                                           'div[data-qa=POSTING_CARD_LOCATION]')
-            addresses = [self._get_address(neighborhoods[i], addresses[i])
-                         for i in range(len(neighborhoods))]
-            features = find_elements(
-                self._driver, 'div[data-qa=POSTING_CARD_FEATURES] span span')
-            areas = [self._get_from_feature(f.text) for f in features[0::5]]
-            util_areas = [self._get_from_feature(f.text) for f in features[1::5]]
-            bedrooms = [self._get_from_feature(f.text) for f in features[2::5]]
-            bathrooms = [self._get_from_feature(f.text) for f in features[3::5]]
-            car_spaces = [self._get_from_feature(f.text) for f in features[4::5]]
-            for i in range(len(prices)):
-                phone_numbers = find_elements(self._driver,
-                                              'button[data-qa=CARD_WHATSAPP')
-                advertiser_names_buttons = find_elements(
-                    self._driver, 'button[data-qa=CARD_CONTACT_MODAL]')
-                ads = find_elements(
-                    self._driver,
-                    '.sc-i1odl-2 .sc-i1odl-3 div:not([class]):first-child'
+            ads = find_elements(self._driver, 'div.sc-i1odl-3 div')
+            if search_info.neighborhood.lower() in neighborhoods[i].text.lower() and self._get_ad_url(ads[i]) not in dataframe['Link']:
+                real_estate = RealEstate(
+                    negotiation_type=search_info.negotiation_type.lower(),
+                    real_estate_type=search_info.real_estate_type.lower(),
+                    city=f'{search_info.city} - {search_info.state}',
+                    phone_number=self._get_phone_number(phone_numbers[i]),
+                    price=self._get_price(prices[i]),
+                    address=self._get_address(neighborhoods[i], addresses[i]),
+                    area=self._get_from_feature(feature, 0),
+                    util_area=self._get_from_feature(feature, 1),
+                    bedrooms=self._get_from_feature(feature, 2),
+                    bathrooms=self._get_from_feature(feature, 3),
+                    car_spaces=self._get_from_feature(feature, 4),
+                    ad_url=self._get_ad_url(ads[i]),
+                    advertiser_name=self._get_advertiser_name(
+                        advertiser_names_buttons[0]),
                 )
-                neighborhoods = find_elements(
-                    self._driver,
-                    'div[data-qa=POSTING_CARD_LOCATION]')
-                if search_info.neighborhood.lower() in neighborhoods[i].text.lower():
-                    ad_url = self._get_ad_url(ads[i])
-                    if ad_url not in list(dataframe['Link']):
-                        real_estate = RealEstate(
-                            negotiation_type=search_info.negotiation_type.lower(),
-                            real_estate_type=search_info.real_estate_type.lower(),
-                            city=f'{search_info.city} - {search_info.state}',
-                            phone_number=self._get_phone_number(phone_numbers[i]),
-                            price=prices[i],
-                            address=addresses[i],
-                            area=areas[i],
-                            util_area=util_areas[i],
-                            bedrooms=bedrooms[i],
-                            bathrooms=bathrooms[i],
-                            car_spaces=car_spaces[i],
-                            ad_url=ad_url,
-                            advertiser_name=self._get_advertiser_name(
-                                advertiser_names_buttons[0]),
-                        )
-                        result.append(real_estate)
-            url = find_element(self._driver,
-                               'a[data-qa=PAGING_NEXT]').get_attribute('href')
-            self._driver.delete_all_cookies()
-            self._driver.get(url)
+                result.append(real_estate)
         return result
 
     def _get_price(self, price_element) -> float:
-        return float(price_element.text[3:].replace('.', ''))
+        return float(price_element.text.replace('.', ''))
 
     def _get_phone_number(self, phone_number_element) -> str:
         self._driver.delete_all_cookies()
@@ -159,7 +142,7 @@ class ImovelWebBrowser(IBrowser):
         for w in windows:
             if w != current_window:
                 self._driver.switch_to.window(w)
-        regex = re.compile(r'.+phone=(\d+).+', re.DOTALL)
+        regex = re.compile(r'\?phone(\d+).+')
         phone_number = int(regex.findall(self._driver.current_url)[0])
         self._driver.close()
         self._driver.switch_to.window(current_window)
@@ -168,9 +151,9 @@ class ImovelWebBrowser(IBrowser):
     def _get_address(self, neighborhood_element, address_element) -> str:
         return f'{address_element.text} - {neighborhood_element.text}'
 
-    def _get_from_feature(self, feature: str) -> int:
-        regex = re.compile(r'(\d+) .+', re.DOTALL)
-        return int(regex.findall(feature)[0])
+    def _get_from_feature(self, feature_element, index: int) -> int:
+        regex = re.compile(r'(\d+) .+')
+        return int(regex.findall(feature_element[index].text)[0])
 
     def _get_ad_url(self, ad_element) -> str:
         self._driver.delete_all_cookies()
@@ -186,7 +169,8 @@ class ImovelWebBrowser(IBrowser):
         return url
 
     def _get_advertiser_name(self, advertiser_name_button) -> str:
-        text = find_element(self._driver, 'h3.sc-ab7c1w-0').text
-        regex = re.compile(r'.+ WhatsApp para (.+) sobre o imóvel .+',
-                           re.DOTALL)
+        self._driver.execute_script('arguments[0].click();',
+                                    advertiser_name_button)
+        text = find_element(self._driver, 'h3.sc-ho11yh-3').text
+        regex = re.compile(r'Entre em contato com (.+) para o .+')
         return regex.findall(text)[0]

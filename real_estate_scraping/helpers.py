@@ -1,5 +1,5 @@
 from PySide6 import QtWidgets
-from selenium.webdriver import Firefox
+from selenium.webdriver import Chrome
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
@@ -40,7 +40,17 @@ def open_directory_dialog(widget: QtWidgets.QWidget,
     target_input.setText(result)
 
 
-def find_element(driver: Firefox, selector: str):
+def find_element(driver: Chrome, selector: str):
     return WebDriverWait(driver, 30).until(
         EC.presence_of_element_located((By.CSS_SELECTOR, selector))
     )
+
+
+def find_elements(driver: Chrome, selector: str):
+    return WebDriverWait(driver, 30).until(
+        EC.presence_of_all_elements_located((By.CSS_SELECTOR, selector))
+    )
+
+
+def click(driver: Chrome, selector: str) -> None:
+    driver.execute_script('arguments[0].click();', find_element(selector))
