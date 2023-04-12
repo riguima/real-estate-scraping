@@ -94,56 +94,65 @@ class ImovelWebBrowser(IBrowser):
         self._driver.get(url.lower())
         result = []
         for p in range(search_info.num_pages):
-            prices = [self._get_price(p) for p in find_elements(
-                self._driver, 'div[data-qa=POSTING_CARD_PRICE]')]
-            addresses = find_elements(self._driver, '.sc-ge2uzh-0')
-            neighborhoods = find_elements(self._driver,
-                                          'div[data-qa=POSTING_CARD_LOCATION]')
-            addresses = [self._get_address(neighborhoods[i], addresses[i])
-                         for i in range(len(neighborhoods))]
-            features = find_elements(
-                self._driver, 'div[data-qa=POSTING_CARD_FEATURES] span span')
-            areas = [self._get_from_feature(f.text) for f in features[0::5]]
-            util_areas = [self._get_from_feature(f.text) for f in features[1::5]]
-            bedrooms = [self._get_from_feature(f.text) for f in features[2::5]]
-            bathrooms = [self._get_from_feature(f.text) for f in features[3::5]]
-            car_spaces = [self._get_from_feature(f.text) for f in features[4::5]]
-            for i in range(len(prices)):
-                phone_numbers = find_elements(self._driver,
-                                              'button[data-qa=CARD_WHATSAPP')
-                advertiser_names_buttons = find_elements(
-                    self._driver, 'button[data-qa=CARD_CONTACT_MODAL]')
-                ads = find_elements(
-                    self._driver,
-                    '.sc-i1odl-2 .sc-i1odl-3 div:not([class]):first-child'
-                )
-                neighborhoods = find_elements(
-                    self._driver,
-                    'div[data-qa=POSTING_CARD_LOCATION]')
-                if search_info.neighborhood.lower() in neighborhoods[i].text.lower():
+            for i in range(20):
+                try:
+                    ad_container = find_elements(self._driver, '.sc-i1odl-2')[i]
+                except IndexError:
+                    break
+                neighborhood = find_element(
+                    ad_container, 'div[data-qa=POSTING_CARD_LOCATION]')
+                if search_info.neighborhood.lower() in neighborhood.text.lower():
+                    address = self._get_address(
+                        neighborhood,
+                        find_element(ad_container, '.sc-ge2uzh-0'))
+                    price = self._get_price(find_element(
+                        ad_container, 'div[data-qa=POSTING_CARD_PRICE]'))
+                    features_list = ['' for i in range(5)]
+                    features = find_elements(
+                        ad_container,
+                        'div[data-qa=POSTING_CARD_FEATURES] span span')
+                    for e, feature in enumerate(features):
+                        features_list[e] = self._get_from_feature(feature.text)
+                    ads = find_elements(
+                        self._driver,
+                        '.sc-i1odl-2 .sc-i1odl-3 div:not([class]):first-child'
+                    )
                     ad_url = self._get_ad_url(ads[i])
+                    try:
+                        phone_number = self._get_phone_number(find_element(
+                            ad_container, 'button[data-qa=CARD_WHATSAPP'))
+                        advertiser_name = self._get_advertiser_name(
+                            find_element(ad_container,
+                                         'button[data-qa=CARD_CONTACT_MODAL]'))
+                    except Exception:
+                        phone_number = 0
+                        advertiser_name = ''
                     if ad_url not in list(dataframe['Link']):
                         real_estate = RealEstate(
                             negotiation_type=search_info.negotiation_type.lower(),
                             real_estate_type=search_info.real_estate_type.lower(),
                             city=f'{search_info.city} - {search_info.state}',
-                            phone_number=self._get_phone_number(phone_numbers[i]),
-                            price=prices[i],
-                            address=addresses[i],
-                            area=areas[i],
-                            util_area=util_areas[i],
-                            bedrooms=bedrooms[i],
-                            bathrooms=bathrooms[i],
-                            car_spaces=car_spaces[i],
+                            phone_number=phone_number,
+                            price=price,
+                            address=address,
+                            area=features_list[0],
+                            util_area=features_list[1],
+                            bedrooms=features_list[2],
+                            bathrooms=features_list[3],
+                            car_spaces=features_list[4],
                             ad_url=ad_url,
-                            advertiser_name=self._get_advertiser_name(
-                                advertiser_names_buttons[0]),
+                            advertiser_name=advertiser_name,
                         )
                         result.append(real_estate)
-            url = find_element(self._driver,
-                               'a[data-qa=PAGING_NEXT]').get_attribute('href')
-            self._driver.delete_all_cookies()
-            self._driver.get(url)
+            try:
+                url = find_element(
+                    self._driver,
+                    'a[data-qa=PAGING_NEXT]').get_attribute('href')
+                self._driver.delete_all_cookies()
+                self._driver.get(url)
+                sleep(5)
+            except TimeoutException:
+                break
         return result
 
     def _get_price(self, price_element) -> float:
@@ -160,7 +169,9 @@ class ImovelWebBrowser(IBrowser):
             if w != current_window:
                 self._driver.switch_to.window(w)
         regex = re.compile(r'.+phone=(\d+).+', re.DOTALL)
-        phone_number = int(regex.findall(self._driver.current_url)[0])
+        url = find_element(self._driver, '#action-button').get_attribute(
+            'href')
+        phone_number = int(regex.findall(url)[0])
         self._driver.close()
         self._driver.switch_to.window(current_window)
         return phone_number
@@ -186,7 +197,10 @@ class ImovelWebBrowser(IBrowser):
         return url
 
     def _get_advertiser_name(self, advertiser_name_button) -> str:
-        text = find_element(self._driver, 'h3.sc-ab7c1w-0').text
+        try:
+            text = find_element(self._driver, 'h3.sc-ab7c1w-0').text
+        except TimeoutException:
+            return ''
         regex = re.compile(r'.+ WhatsApp para (.+) sobre o imóvel .+',
                            re.DOTALL)
         return regex.findall(text)[0]
